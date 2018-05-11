@@ -1,0 +1,10 @@
+Elementos indispensables a considerar
+
+El guion del video debe considerar
+
+-Introducción
+-Tema
+-Texto
+-Ejemplo sql
+-Ejecución del script
+-Contener en el texto la separación de los textos de cada personaje
