@@ -1,3 +1,6 @@
+--Esquema
+--Calette Cornelio Javier
+
 DROP TABLE EMPLEADO;
 DROP TABLE SALARIO;
 DROP TABLE OBLIGACION;
