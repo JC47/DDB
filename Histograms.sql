@@ -1,28 +1,84 @@
-begin
-    dbms_stats.gather_table_stats(ownname => user,
-                                  tabname => 'T',
-                                  method_opt=>'for all columns size 4');
-end;
+--Creación de la tabla de trabajo
+DROP TABLE T;
+CREATE TABLE T
+    AS SELECT CASE WHEN (ROWNUM BETWEEN 1 AND 10) THEN 1
+                   WHEN (ROWNUM BETWEEN 11 AND 110) THEN 2
+                   WHEN (ROWNUM BETWEEN 111 AND 1110) THEN 3
+                   WHEN (ROWNUM BETWEEN 1111 AND 11110) THEN 4
+              END X
+    FROM DUAL
+    CONNECT BY ROWNUM <= 11110;
+
+--Consulta a la tabla
+SELECT X, COUNT(*) FROM T GROUP BY X;
+
+--Creación del histograma sin metodo
+BEGIN
+ DBMS_STATS.GATHER_TABLE_STATS(OWNNAME => USER,TABNAME => 'T');
+END;
 /
 
-create table t
-as select rownum x
-from dual
-connect by rownum <= 11110
+--Consulta al histograma
+SET LINESIZE 150;
+COLUMN TABLE_NAME FORMAT A15;
+COLUMN COLUMN_NAME FORMAT A15;
+COLUMN ENDPOINT_NUMBER FORMAT 99999;
+COLUMN ENDPOINT_VALUE FORMAT 99999;
+SELECT TABLE_NAME,NUM_DISTINCT,DENSITY,NUM_BUCKETS FROM USER_TAB_COL_STATISTICS WHERE TABLE_NAME = 'T';
+SELECT TABLE_NAME,COLUMN_NAME,ENDPOINT_NUMBER,ENDPOINT_VALUE FROM USER_TAB_HISTOGRAMS WHERE TABLE_NAME = 'T';
 
-begin
-    dbms_stats.gather_table_stats(ownname => user,
-                                  tabname => 'T',
-                                  cascade => true,
-                                  method_opt => 'for columns size 1');
-end;
+--Asignación de metodo
+BEGIN
+ DBMS_STATS.GATHER_TABLE_STATS(OWNNAME => USER,TABNAME => 'T', METHOD_OPT =>'FOR ALL COLUMNS SIZE 4');
+END;
 /
 
-begin
-     dbms_stats.gather_table_stats(ownname => user,
-                                   tabname => 'T',
-                                   cascade => true);
-end;
+--Conslta al histograma
+SELECT TABLE_NAME,NUM_DISTINCT,DENSITY,NUM_BUCKETS,HISTOGRAM FROM USER_TAB_COL_STATISTICS WHERE TABLE_NAME = 'T';
+SELECT TABLE_NAME,COLUMN_NAME,ENDPOINT_NUMBER,ENDPOINT_VALUE FROM USER_TAB_HISTOGRAMS WHERE TABLE_NAME = 'T';
 
+--Histograma de altura equilibrada
 
-select table_name,column_name,NUM_DISTINCT,NUM_NULLS,NUM_BUCKETS, histogram from user_tab_col_statistics where table_name = 'T';
+--Tabla de trabajo
+DROP TABLE T;
+CREATE TABLE T
+AS SELECT ROWNUM X
+FROM DUAL
+CONNECT BY ROWNUM <= 11110;
+
+UPDATE T SET X = 1 WHERE ROWNUM <= 5000;
+
+UPDATE T SET X = 2 WHERE ROWNUM <= 3000 AND X != 1;
+
+CREATE INDEX T_IDX ON T(X);
+
+--Histograma creado
+BEGIN
+ DBMS_STATS.GATHER_TABLE_STATS(OWNNAME => USER,TABNAME => 'T', CASCADE =>TRUE, METHOD_OPT =>'FOR ALL COLUMNS SIZE 1');
+END;
+/
+
+--Caracteristicas del histograma
+SELECT TABLE_NAME,NUM_DISTINCT,DENSITY,NUM_BUCKETS FROM USER_TAB_COL_STATISTICS WHERE TABLE_NAME = 'T';
+SELECT TABLE_NAME,COLUMN_NAME,ENDPOINT_NUMBER,ENDPOINT_VALUE FROM USER_TAB_HISTOGRAMS WHERE TABLE_NAME = 'T';
+
+--Consulta simple sobre la tabla
+EXPLAIN PLAN FOR SELECT COUNT(1) FROM T WHERE X = 1;
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
+
+--Histograma correcto
+BEGIN
+ DBMS_STATS.GATHER_TABLE_STATS(OWNNAME => USER,TABNAME => 'T', CASCADE =>TRUE);
+END;
+/
+
+--Caracteristicas del histograma
+SELECT TABLE_NAME,NUM_DISTINCT,DENSITY,NUM_BUCKETS,HISTOGRAM FROM USER_TAB_COL_STATISTICS WHERE TABLE_NAME = 'T';
+SELECT TABLE_NAME,COLUMN_NAME,ENDPOINT_NUMBER,ENDPOINT_VALUE FROM USER_TAB_HISTOGRAMS WHERE TABLE_NAME = 'T';
+
+--Consulta simple sobre la tabla
+EXPLAIN PLAN FOR SELECT COUNT(1) FROM T WHERE X = 1;
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
+
+--Comprobación
+SELECT (11110/254)*113 FROM DUAL;

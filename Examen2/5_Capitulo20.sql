@@ -71,3 +71,14 @@ END;
 /
 ----------------------------------------------------TEST F3
 SELECT F3(first_name, last_name) FROM instructor;
+
+
+SELECT location "Location",
+(capacity) "Total Capacity",
+COURSE_NO "CNO"
+FROM section
+WHERE section_no = 3;
+
+SELECT MIN (description) AS MIN, MAX (description) AS MAX
+FROM course;
+SELECT DISTINCT (description) AS MIN FROM course;
